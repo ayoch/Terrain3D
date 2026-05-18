@@ -194,10 +194,12 @@ void vertex() {
 		v_vertex.y = h;
 	}
 
-	// Circular render distance — sink vertices beyond the radius below clip plane
+	// Circular render distance — sink vertices beyond the radius below clip plane.
+	// Multiplier is high enough that the clipmap's square corners drop far below
+	// view even from altitude, so the visible silhouette stays circular.
 	if (_render_distance > 0.f && v_vertex_xz_dist > _render_distance) {
 		float excess = v_vertex_xz_dist - _render_distance;
-		v_vertex.y -= excess * 2.0;
+		v_vertex.y -= excess * 50.0;
 	}
 
 	// Convert model space to view space w/ skip_vertex_transform render mode
