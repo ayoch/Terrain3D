@@ -46,6 +46,8 @@ render_mode blend_mix,depth_draw_opaque,cull_back,diffuse_burley,specular_schlic
 
 // Private uniforms
 uniform vec3 _camera_pos = vec3(0.f);
+uniform vec3 _node_origin = vec3(0.f); // World-space position of this Terrain3D node
+uniform float _render_distance = 0.f; // Circular render distance in metres. 0 = disabled (square clipmap).
 uniform float _mesh_size = 48.f;
 uniform uint _background_mode = 1u; // NONE = 0, FLAT = 1, NOISE = 2
 uniform uint _mouse_layer = 0x80000000u; // Layer 32
@@ -162,15 +164,17 @@ void vertex() {
 			) :
 		// Symetric shift
 		v_fract * round((fract(v_vertex.xz * 0.25 / scale) - 0.5) * 4.0);
-	vec2 start_pos = v_vertex.xz * _vertex_density;
-	vec2 end_pos = (v_vertex.xz - shift * scale) * _vertex_density;
+	// Node-local offset in vertex-density space for region lookups
+	vec2 node_xz = _node_origin.xz * _vertex_density;
+	vec2 start_pos = v_vertex.xz * _vertex_density - node_xz;
+	vec2 end_pos = (v_vertex.xz - shift * scale) * _vertex_density - node_xz;
 	v_vertex.xz -= shift * scale * vertex_lerp;
 
 	// UV coordinates in world space. Values are 0 to _region_size within regions
 	UV = v_vertex.xz * _vertex_density;
 
-	// UV coordinates in region space + texel offset. Values are 0 to 1 within regions
-	UV2 = fma(UV, vec2(_region_texel_size), vec2(0.5 * _region_texel_size));
+	// UV2 in node-local region space for region lookups. UV stays world-space for texture tiling.
+	UV2 = fma(UV - node_xz, vec2(_region_texel_size), vec2(0.5 * _region_texel_size));
 
 	// Discard vertices for Holes. 1 lookup
 	ivec3 v_region = get_index_coord(start_pos, VERTEX_PASS);
@@ -188,6 +192,12 @@ void vertex() {
 		float h = mix(texelFetch(_height_maps, coord_a, 0).r,texelFetch(_height_maps, coord_b, 0).r,vertex_lerp);
 //INSERT: WORLD_NOISE2
 		v_vertex.y = h;
+	}
+
+	// Circular render distance — sink vertices beyond the radius below clip plane
+	if (_render_distance > 0.f && v_vertex_xz_dist > _render_distance) {
+		float excess = v_vertex_xz_dist - _render_distance;
+		v_vertex.y -= excess * 2.0;
 	}
 
 	// Convert model space to view space w/ skip_vertex_transform render mode

@@ -120,8 +120,10 @@ void Terrain3D::__physics_process(const double p_delta) {
 	// If camera has moved enough, re-center the terrain on it.
 	if (is_instance_valid(_camera_instance_id) && _camera->is_inside_tree()) {
 		Vector3 cam_pos = _camera->get_global_position();
+		Vector3 node_pos = get_global_position();
 		Vector2 cam_pos_2d = Vector2(cam_pos.x, cam_pos.z);
 		RS->material_set_param(_material->get_material_rid(), "_camera_pos", cam_pos);
+		RS->material_set_param(_material->get_material_rid(), "_node_origin", node_pos);
 		if (_camera_last_position.distance_to(cam_pos_2d) > 0.2f) {
 			if (_mesher) {
 				_mesher->snap(cam_pos);
@@ -583,6 +585,13 @@ void Terrain3D::set_mesh_size(const int p_size) {
 	}
 }
 
+void Terrain3D::set_render_distance(const real_t p_distance) {
+	_render_distance = MAX(0.0f, p_distance);
+	if (_material.is_valid()) {
+		RS->material_set_param(_material->get_material_rid(), "_render_distance", _render_distance);
+	}
+}
+
 void Terrain3D::set_vertex_spacing(const real_t p_spacing) {
 	real_t spacing = CLAMP(p_spacing, 0.25f, 100.0f);
 	if (_vertex_spacing != spacing) {
@@ -884,9 +893,15 @@ void Terrain3D::_notification(const int p_what) {
 		}
 
 		case NOTIFICATION_TRANSFORM_CHANGED: {
-			// Node3D or parent transform changed
-			if (get_transform() != Transform3D()) {
-				set_transform(Transform3D());
+			// Allow XZ translation but enforce no rotation or scale.
+			Transform3D t = get_transform();
+			if (t.basis != Basis()) {
+				t.basis = Basis();
+				set_transform(t);
+			}
+			// Keep shader in sync with node world position.
+			if (_material.is_valid()) {
+				RS->material_set_param(_material->get_material_rid(), "_node_origin", get_global_position());
 			}
 			break;
 		}
@@ -1057,6 +1072,8 @@ void Terrain3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_snapped_position"), &Terrain3D::get_snapped_position);
 
 	// Rendering
+	ClassDB::bind_method(D_METHOD("set_render_distance", "distance"), &Terrain3D::set_render_distance);
+	ClassDB::bind_method(D_METHOD("get_render_distance"), &Terrain3D::get_render_distance);
 	ClassDB::bind_method(D_METHOD("set_render_layers", "layers"), &Terrain3D::set_render_layers);
 	ClassDB::bind_method(D_METHOD("get_render_layers"), &Terrain3D::get_render_layers);
 	ClassDB::bind_method(D_METHOD("set_mouse_layer", "layer"), &Terrain3D::set_mouse_layer);
@@ -1152,6 +1169,7 @@ void Terrain3D::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "vertex_spacing", PROPERTY_HINT_RANGE, "0.25,10.0,0.05,or_greater"), "set_vertex_spacing", "get_vertex_spacing");
 
 	ADD_GROUP("Rendering", "");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "render_distance", PROPERTY_HINT_RANGE, "0.0,10000.0,10.0,or_greater,suffix:m"), "set_render_distance", "get_render_distance");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "render_layers", PROPERTY_HINT_LAYERS_3D_RENDER), "set_render_layers", "get_render_layers");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "mouse_layer", PROPERTY_HINT_RANGE, "21, 32"), "set_mouse_layer", "get_mouse_layer");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "cast_shadows", PROPERTY_HINT_ENUM, "Off,On,Double-Sided,Shadows Only"), "set_cast_shadows", "get_cast_shadows");

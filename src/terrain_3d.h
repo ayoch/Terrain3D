@@ -81,6 +81,7 @@ private:
 	Vector3 _snapped_position = V3_ZERO;
 
 	// Rendering
+	real_t _render_distance = 0.0f; // 0 = disabled (square clipmap)
 	uint32_t _render_layers = 1 | (1 << 31); // Bit 1 and 32 for the cursor
 	RenderingServer::ShadowCastingSetting _cast_shadows = RenderingServer::SHADOW_CASTING_SETTING_ON;
 	GeometryInstance3D::GIMode _gi_mode = GeometryInstance3D::GI_MODE_STATIC;
@@ -170,6 +171,8 @@ public:
 	Vector3 get_snapped_position() const { return _snapped_position; }
 
 	// Rendering
+	void set_render_distance(const real_t p_distance);
+	real_t get_render_distance() const { return _render_distance; }
 	void set_render_layers(const uint32_t p_layers);
 	uint32_t get_render_layers() const { return _render_layers; };
 	void set_mouse_layer(const uint32_t p_layer);
