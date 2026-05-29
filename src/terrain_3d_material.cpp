@@ -517,6 +517,9 @@ void Terrain3DMaterial::_update_maps() {
 	real_t mesh_size = real_t(_terrain->get_mesh_size());
 	RS->material_set_param(_material, "_mesh_size", mesh_size);
 	RS->material_set_param(_material, "_render_distance", _terrain->get_render_distance());
+	// Keep _node_origin in sync whenever map data rebuilds — covers the startup path
+	// where NOTIFICATION_TRANSFORM_CHANGED fires before the material is valid.
+	RS->material_set_param(_material, "_node_origin", _terrain->get_global_position());
 }
 
 // Called from signal connected in Terrain3D, emitted by texture_list

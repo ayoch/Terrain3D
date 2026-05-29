@@ -881,6 +881,12 @@ void Terrain3D::_notification(const int p_what) {
 					_assets->clear_textures();
 				}
 			}
+			// NOTIFICATION_TRANSFORM_CHANGED may fire before the material exists on initial
+			// scene load; __physics_process doesn't run in the editor. Set _node_origin here
+			// so multi-instance region lookups are correct from the first frame.
+			if (_material.is_valid()) {
+				RS->material_set_param(_material->get_material_rid(), "_node_origin", get_global_position());
+			}
 			break;
 		}
 
