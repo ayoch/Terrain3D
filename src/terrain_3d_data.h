@@ -212,10 +212,7 @@ inline int Terrain3DData::get_region_map_index(const Vector2i &p_region_loc) {
 }
 
 // Returns a region location given a global position. No bounds checking nor data access.
-inline Vector2i Terrain3DData::get_region_location(const Vector3 &p_global_position) const {
-	Vector2 descaled_position = v3v2(p_global_position) / _vertex_spacing;
-	return Vector2i((descaled_position / real_t(_region_size)).floor());
-}
+// Defined in terrain_3d_data.cpp — requires full Terrain3D definition for get_global_position().
 
 // Returns id of any active region. -1 if out of bounds or no region, or region id
 inline int Terrain3DData::get_region_id(const Vector2i &p_region_loc) const {

@@ -596,6 +596,11 @@ void Terrain3DData::update_maps(const MapType p_map_type, const bool p_all_regio
 	emit_signal("maps_changed");
 }
 
+Vector2i Terrain3DData::get_region_location(const Vector3 &p_global_position) const {
+	Vector2 descaled_position = v3v2(p_global_position - _terrain->get_global_position()) / _vertex_spacing;
+	return Vector2i((descaled_position / real_t(_region_size)).floor());
+}
+
 void Terrain3DData::set_pixel(const MapType p_map_type, const Vector3 &p_global_position, const Color &p_pixel) {
 	if (p_map_type < 0 || p_map_type >= TYPE_MAX) {
 		LOG(ERROR, "Specified map type out of range");
@@ -612,7 +617,7 @@ void Terrain3DData::set_pixel(const MapType p_map_type, const Vector3 &p_global_
 		return;
 	}
 	Vector2i global_offset = region_loc * _region_size;
-	Vector3 descaled_pos = p_global_position / _vertex_spacing;
+	Vector3 descaled_pos = (p_global_position - _terrain->get_global_position()) / _vertex_spacing;
 	Vector2i img_pos = Vector2i(descaled_pos.x - global_offset.x, descaled_pos.z - global_offset.y);
 	img_pos = img_pos.clamp(V2I_ZERO, Vector2i(_region_size - 1, _region_size - 1));
 	Image *map = region->get_map_ptr(p_map_type);
@@ -636,7 +641,7 @@ Color Terrain3DData::get_pixel(const MapType p_map_type, const Vector3 &p_global
 		return COLOR_NAN;
 	}
 	Vector2i global_offset = region_loc * _region_size;
-	Vector3 descaled_pos = p_global_position / _vertex_spacing;
+	Vector3 descaled_pos = (p_global_position - _terrain->get_global_position()) / _vertex_spacing;
 	Vector2i img_pos = Vector2i(descaled_pos.x - global_offset.x, descaled_pos.z - global_offset.y);
 	img_pos = img_pos.clamp(V2I_ZERO, Vector2i(_region_size - 1, _region_size - 1));
 	Image *map = region->get_map_ptr(p_map_type);

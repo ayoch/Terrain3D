@@ -365,7 +365,11 @@ void fragment() {
 	// Lookup offsets, ID and blend weight
 	vec3 region_uv = get_index_uv(uv2);
 	const vec3 offsets = vec3(0, 1, 2);
-	vec2 index_id = floor(uv);
+	// Subtract node origin so region lookups are in node-local space, not world space.
+	// Without this, tiles positioned away from the world origin map to out-of-bounds
+	// region_map indices and all control/height fragment lookups return layer_index -1.
+	vec2 node_xz = _node_origin.xz * _vertex_density;
+	vec2 index_id = floor(uv - node_xz);
 	vec2 weight = fract(uv);
 	vec2 invert = 1.0 - weight;
 	vec4 weights = vec4(
