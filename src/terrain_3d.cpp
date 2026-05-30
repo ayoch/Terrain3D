@@ -850,6 +850,16 @@ void Terrain3D::_notification(const int p_what) {
 			if (_mesher) {
 				_mesher->update();
 			}
+			// Re-run _initialize() now that _is_inside_world is true. ENTER_TREE
+			// fires before ENTER_WORLD for top-level Node3Ds, so the _initialize()
+			// call in ENTER_TREE ran with _is_inside_world=false and the
+			// `if (!_initialized && _is_inside_world && is_inside_tree())` gate
+			// in _initialize() refused to set _initialized=true. Without this,
+			// non-selected tiles (Tile_W, Tile_NW) never get _initialized,
+			// __physics_process returns early every tick, and the mesher never
+			// snaps the clipmap to the camera — terrain rendered far from the
+			// camera, no collision, intermittent visibility.
+			_initialize();
 			break;
 		}
 
