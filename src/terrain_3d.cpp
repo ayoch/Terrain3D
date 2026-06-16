@@ -873,6 +873,15 @@ void Terrain3D::_notification(const int p_what) {
 		case NOTIFICATION_READY: {
 			// Node is ready
 			LOG(INFO, "NOTIFICATION_READY");
+			// Notification order for top-level Node3Ds is ENTER_TREE -> ENTER_WORLD -> READY.
+			// _initialize() in ENTER_TREE runs before _is_inside_world is true, so its gate
+			// (terrain_3d.cpp:~93) refuses to set _initialized. By READY both _is_inside_world
+			// and is_inside_tree() are true AND the global transform is finalized, so this is
+			// the first safe point to initialize every tile -- including non-selected/offset
+			// tiles that otherwise never snap their clipmap to the camera. (A prior attempt to
+			// do this in ENTER_WORLD was reverted because get_global_position() wasn't settled
+			// there yet, giving offset tiles a wrong _node_origin.)
+			_initialize();
 			if (_free_editor_textures && !IS_EDITOR && _assets.is_valid()) {
 				if (_assets->get_path().contains("Terrain3DAssets")) {
 					LOG(WARN, "free_editor_textures requires `Assets` be saved to a file. Do so, or disable the former to turn off this warning");

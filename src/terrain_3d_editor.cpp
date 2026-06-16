@@ -130,7 +130,7 @@ void Terrain3DEditor::_operate_map(const Vector3 &p_global_position, const real_
 	if (mouse_pressure < CMP_EPSILON && ticks - _last_pen_tick >= 100) {
 		mouse_pressure = 1.f;
 	}
-	real_t strength = mouse_pressure * (real_t)_brush_data["strength"];
+	real_t strength = mouse_pressure * (real_t)_brush_data["strength"] * .01f;
 
 	real_t height = _brush_data["height"];
 	Color color = _brush_data["color"];
@@ -721,7 +721,9 @@ void Terrain3DEditor::set_brush_data(const Dictionary &p_data) {
 	// Santize settings
 	// size is redundantly clamped differently in _operate_map and instancer::add_transforms
 	_brush_data["size"] = CLAMP(real_t(p_data.get("size", 10.f)), 0.1f, 4096.f); // Diameter in meters
-	_brush_data["strength"] = CLAMP(real_t(p_data.get("strength", .1f)) * .01f, .01f, 1000.f); // 1-100k% (max of 1000m per click)
+	// Store raw slider value (percent). Scale by 0.01 at use site to avoid double-scaling
+	// when the shared dict is re-sent (e.g. via editor_plugin mouse_pressure injection).
+	_brush_data["strength"] = CLAMP(real_t(p_data.get("strength", 10.f)), 1.f, 100000.f);
 	// mouse_pressure injected in editor.gd and sanitized in _operate_map()
 	Vector2 slope = p_data.get("slope", Vector2(0.f, 90.f));
 	slope.x = CLAMP(slope.x, 0.f, 90.f);

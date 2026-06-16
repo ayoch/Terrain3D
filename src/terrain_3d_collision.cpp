@@ -294,6 +294,14 @@ void Terrain3DCollision::update(const bool p_rebuild) {
 	int time = Time::get_singleton()->get_ticks_usec();
 	real_t spacing = _terrain->get_vertex_spacing();
 
+	// Node origin in world units and descaled (used for multi-instance support so
+	// region data — stored in each tile's local coord frame — can be looked up
+	// even when the Terrain3D node is offset, while shapes are placed in world.
+	Vector3 node_origin_world = _terrain->get_global_position();
+	Vector2i node_origin_descaled = Vector2i(
+			int(Math::floor(node_origin_world.x / spacing)),
+			int(Math::floor(node_origin_world.z / spacing)));
+
 	if (is_dynamic_mode()) {
 		// Snap descaled position to a _shape_size grid (eg. multiples of 16)
 		Vector2i snapped_pos = _snap_to_grid(_terrain->get_snapped_position() / spacing);
@@ -371,7 +379,8 @@ void Terrain3DCollision::update(const bool p_rebuild) {
 					LOG(ERROR, "No more unused shapes! Aborting!");
 					break;
 				}
-				Dictionary shape_data = _get_shape_data(shape_pos, _shape_size);
+				// Look up region data in tile-local coords so offset tiles work
+				Dictionary shape_data = _get_shape_data(shape_pos - node_origin_descaled, _shape_size);
 				if (shape_data.is_empty()) {
 					LOG(EXTREME, "grid[", i, ":", grid_loc, "] shape_pos : ", shape_pos, " No region found");
 					continue;
@@ -380,6 +389,8 @@ void Terrain3DCollision::update(const bool p_rebuild) {
 				Transform3D xform = shape_data["xform"];
 				LOG(EXTREME, "grid[", i, ":", grid_loc, "] shape_pos : ", shape_pos, " act ", v3v2i(xform.origin) - shape_offset, " placing shape id ", shape_id);
 				xform.scale(Vector3(spacing, 1.f, spacing));
+				// Translate local-space xform back into world for the physics server
+				xform.origin += node_origin_world;
 				_shape_set_transform(shape_id, xform);
 				_shape_set_disabled(shape_id, false);
 				_shape_set_data(shape_id, shape_data);
@@ -404,6 +415,8 @@ void Terrain3DCollision::update(const bool p_rebuild) {
 			}
 			Transform3D xform = shape_data["xform"];
 			xform.scale(Vector3(spacing, 1.f, spacing));
+			// Translate local-space xform back into world for the physics server
+			xform.origin += node_origin_world;
 			_shape_set_transform(i, xform);
 			_shape_set_disabled(i, false);
 			_shape_set_data(i, shape_data);

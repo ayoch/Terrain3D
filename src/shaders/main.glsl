@@ -124,7 +124,20 @@ ivec3 get_index_coord(const vec2 uv, const int search) {
 	int bounds, layer_index = -1;
 	for (int i = -1; i < clamp(search, SKIP_PASS, FRAGMENT_PASS); i++) {
 		if ((layer_index == -1 && _background_mode == 0u ) || i < 0) {
-			r_uv -= i == -1 ? vec2(0.0) : vec2(float(o_uv.x <= o_uv.y), float(o_uv.y <= o_uv.x));
+			// Mosaic-aware edge rescue. The original shift picked the neighbour
+			// region along the o_uv diagonal, which mis-resolves the two diagonal
+			// tile corners: the rescue lands out of bounds -> layer -1 -> the vertex
+			// is discarded and rendered as a vertical NaN spike (missing square from
+			// above). Instead, shift each axis toward the in-bounds region range so a
+			// just-past-corner vertex resolves to the corner region. Fall back to the
+			// original o_uv shift only for the in-bounds gap case (sparse maps).
+			vec2 cell = floor(r_uv * _region_texel_size) + float(_region_map_size / 2);
+			vec2 toward = vec2(
+				cell.x < 0.0 ? 1.0 : (cell.x >= float(_region_map_size) ? -1.0 : 0.0),
+				cell.y < 0.0 ? 1.0 : (cell.y >= float(_region_map_size) ? -1.0 : 0.0));
+			vec2 shift = (toward == vec2(0.0)) ?
+				-vec2(float(o_uv.x <= o_uv.y), float(o_uv.y <= o_uv.x)) : toward;
+			r_uv += (i == -1) ? vec2(0.0) : shift;
 			pos = ivec2(floor((r_uv) * _region_texel_size)) + (_region_map_size / 2);
 			bounds = int(uint(pos.x | pos.y) < uint(_region_map_size));
 			layer_index = (_region_map[ pos.y * _region_map_size + pos.x ] * bounds - 1);
@@ -189,7 +202,15 @@ void vertex() {
 		// Set final vertex height & calculate vertex normals. 3 lookups
 		ivec3 coord_a = get_index_coord(start_pos, VERTEX_PASS);
 		ivec3 coord_b = get_index_coord(end_pos, VERTEX_PASS);
-		float h = mix(texelFetch(_height_maps, coord_a, 0).r,texelFetch(_height_maps, coord_b, 0).r,vertex_lerp);
+		float h_a = texelFetch(_height_maps, coord_a, 0).r;
+			// Geomorph target (end_pos) can fall outside this tile's region map at the
+			// two diagonal corners: mosaic tiles fill the region map to the edge, so the
+			// diagonal-outward neighbour lives in a different Terrain3D instance and the
+			// asymmetric stitch search in get_index_coord() returns layer -1. Sampling a
+			// -1 layer reads garbage and stretches the vertex (the degenerate corners).
+			// Fall back to the start height so the corner holds instead of stretching.
+			float h_b = (coord_b.z < 0) ? h_a : texelFetch(_height_maps, coord_b, 0).r;
+			float h = mix(h_a, h_b, vertex_lerp);
 //INSERT: WORLD_NOISE2
 		v_vertex.y = h;
 	}
