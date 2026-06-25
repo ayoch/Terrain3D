@@ -446,6 +446,13 @@ void Terrain3D::set_data_directory(String p_dir) {
 	update_configuration_warnings();
 }
 
+// Where to save region data when data_directory is empty (streaming mode).
+// Not loaded from; only used by the editor save path.
+void Terrain3D::set_save_directory(String p_dir) {
+	LOG(INFO, "Setting save directory to ", p_dir);
+	_save_directory = p_dir;
+}
+
 void Terrain3D::set_material(const Ref<Terrain3DMaterial> &p_material) {
 	if (_material != p_material) {
 		_initialized = false;
@@ -939,12 +946,15 @@ void Terrain3D::_notification(const int p_what) {
 		case NOTIFICATION_EDITOR_PRE_SAVE: {
 			// Editor Node is about to save the current scene
 			LOG(INFO, "NOTIFICATION_EDITOR_PRE_SAVE");
-			if (_data_directory.is_empty()) {
-				LOG(ERROR, "Data directory is empty. Set it to save regions to disk.");
+			// When streaming, data_directory is empty so Terrain3D doesn't auto-load
+			// all regions; fall back to save_directory so editor edits still persist.
+			String save_dir = _data_directory.is_empty() ? _save_directory : _data_directory;
+			if (save_dir.is_empty()) {
+				LOG(ERROR, "data_directory and save_directory both empty. Set one to save regions to disk.");
 			} else if (!_data) {
 				LOG(DEBUG, "Save requested, but no valid data object. Skipping");
 			} else {
-				_data->save_directory(_data_directory);
+				_data->save_directory(save_dir);
 			}
 			if (!_material.is_valid()) {
 				LOG(DEBUG, "Save requested, but no valid material. Skipping");
@@ -1035,6 +1045,8 @@ void Terrain3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_debug_level"), &Terrain3D::get_debug_level);
 	ClassDB::bind_method(D_METHOD("set_data_directory", "directory"), &Terrain3D::set_data_directory);
 	ClassDB::bind_method(D_METHOD("get_data_directory"), &Terrain3D::get_data_directory);
+	ClassDB::bind_method(D_METHOD("set_save_directory", "directory"), &Terrain3D::set_save_directory);
+	ClassDB::bind_method(D_METHOD("get_save_directory"), &Terrain3D::get_save_directory);
 
 	// Object references
 	ClassDB::bind_method(D_METHOD("get_data"), &Terrain3D::get_data);
@@ -1154,6 +1166,7 @@ void Terrain3D::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "version", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_READ_ONLY), "", "get_version");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "debug_level", PROPERTY_HINT_ENUM, "Errors,Info,Debug,Extreme"), "set_debug_level", "get_debug_level");
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "data_directory", PROPERTY_HINT_DIR), "set_data_directory", "get_data_directory");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING, "save_directory", PROPERTY_HINT_DIR), "set_save_directory", "get_save_directory");
 
 	// Object references
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "data", PROPERTY_HINT_NONE, "Terrain3DData", PROPERTY_USAGE_NONE), "", "get_data");

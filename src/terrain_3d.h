@@ -49,6 +49,7 @@ public: // Constants
 private:
 	String _version = "1.0.1";
 	String _data_directory;
+	String _save_directory; // Fallback save dir used when data_directory is empty (streaming)
 	bool _is_inside_world = false;
 	bool _initialized = false;
 	uint8_t _warnings = 0;
@@ -132,6 +133,8 @@ public:
 	DebugLevel get_debug_level() const { return debug_level; }
 	void set_data_directory(String p_dir);
 	String get_data_directory() const { return _data ? _data_directory : ""; }
+	void set_save_directory(String p_dir);
+	String get_save_directory() const { return _save_directory; }
 
 	// Object references
 	Terrain3DData *get_data() const { return _data; }
